@@ -80,11 +80,12 @@ src/
 ### 3.1 数据表结构
 
 ```sql
--- 药物信息表
+-- 药物信息表（片剂计量版）
 CREATE TABLE medications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    dosage TEXT,
+    dosage_type TEXT DEFAULT '片',  -- 片、半片、粒等
+    dosage_amount REAL DEFAULT 1,   -- 数量：0.5=半片，1=一片
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -132,8 +133,8 @@ class MedicationDao {
     static async create(medication) {
         const db = await getDatabase();
         const result = await db.executeSql(
-            'INSERT INTO medications (name, dosage, description) VALUES (?, ?, ?)',
-            [medication.name, medication.dosage, medication.description]
+            'INSERT INTO medications (name, dosage_type, dosage_amount, description) VALUES (?, ?, ?, ?)',
+            [medication.name, medication.dosage_type || '片', medication.dosage_amount || 1, medication.description]
         );
         return result.insertId;
     }
@@ -147,8 +148,8 @@ class MedicationDao {
     static async update(id, medication) {
         const db = await getDatabase();
         await db.executeSql(
-            'UPDATE medications SET name=?, dosage=?, description=?, updated_at=? WHERE id=?',
-            [medication.name, medication.dosage, medication.description, new Date(), id]
+            'UPDATE medications SET name=?, dosage_type=?, dosage_amount=?, description=?, updated_at=? WHERE id=?',
+            [medication.name, medication.dosage_type, medication.dosage_amount, medication.description, new Date(), id]
         );
     }
 
@@ -179,56 +180,63 @@ class ReminderService {
             reminderTime.setDate(reminderTime.getDate() + 1);
         }
 
-        // 主提醒
+        // 主提醒（纯文字版 - 无语音）
         PushNotification.localNotificationSchedule({
-            title: '服药提醒',
-            message: this.getGentleReminderMessage(medication.name),
+            title: '温柔提醒',
+            message: this.getGentleReminderMessage(medication.name, medication.dosage_amount),
             date: reminderTime,
             repeatType: 'day',
             repeatTime: 24 * 60 * 60 * 1000, // 24小时
             actions: ['已服用', '稍后提醒'],
             smallIcon: 'ic_notification',
-            largeIcon: '',
-            color: '#4CAF50',
-            playSound: true,
-            soundName: 'default',
-            vibrate: true,
-            vibration: 300,
+            color: '#7C9885', // 温馨配色
+            playSound: false, // 完全禁用声音
+            vibrate: false,   // 禁用振动
             tag: `medication_${schedule.id}`,
             userInfo: {
                 scheduleId: schedule.id,
                 medicationName: medication.name,
+                dosageAmount: medication.dosage_amount,
                 reminderType: 'primary'
             }
         });
 
-        // 延迟提醒（15分钟后）
+        // 延迟提醒（15分钟后，仅文字）
         const delayTime = new Date(reminderTime.getTime() + 15 * 60 * 1000);
         this.scheduleDelayedReminder(schedule, medication, delayTime);
     }
 
-    static getGentleReminderMessage(medicationName) {
+    static getGentleReminderMessage(medicationName, dosageAmount) {
+        const dosageText = this.formatDosageText(dosageAmount);
         const messages = [
-            `记得照顾好自己，该服用 ${medicationName} 了 💚`,
-            `服药是关爱自己的方式，${medicationName} 时间到了 ✨`,
-            `坚持就是进步，该服用 ${medicationName} 了 🌱`,
-            `每一小步都很重要，记得服用 ${medicationName} 🌟`,
-            `为自己加油，该服用 ${medicationName} 了 💪`
+            `温柔提醒：该服用${dosageText}${medicationName}`,
+            `记得服用${dosageText}${medicationName}，照顾好自己`,
+            `${dosageText}${medicationName}时间到了，慢慢来`,
+            `该服用${dosageText}${medicationName}，你很棒！`,
+            `提醒：${dosageText}${medicationName}，保持规律很重要`
         ];
         return messages[Math.floor(Math.random() * messages.length)];
     }
 
+    static formatDosageText(amount) {
+        if (amount === 0.5) return '半片';
+        if (amount === 1) return '一片';
+        if (amount === 1.5) return '一片半';
+        if (amount === 2) return '两片';
+        return `${amount}片`;
+    }
+
     static scheduleDelayedReminder(schedule, medication, delayTime) {
+        const dosageText = this.formatDosageText(medication.dosage_amount);
         PushNotification.localNotificationSchedule({
-            title: '温柔提醒',
-            message: `还没服用 ${medication.name} 吗？没关系，现在也不晚 🌈`,
+            title: '再次提醒',
+            message: `别忘了服用${dosageText}${medication.name}，照顾好自己`,
             date: delayTime,
             actions: ['已服用', '跳过这次'],
             smallIcon: 'ic_notification',
             color: '#FF9800',
-            playSound: true,
-            vibrate: true,
-            vibration: 500,
+            playSound: false, // 禁用声音
+            vibrate: false,   // 禁用振动
             tag: `medication_${schedule.id}_delayed`,
             userInfo: {
                 scheduleId: schedule.id,
@@ -245,93 +253,211 @@ class ReminderService {
 }
 ```
 
-### 4.2 UI组件设计（抑郁症患者优化）
+### 4.2 UI组件设计（抑郁症患者优化 - 温馨配色版）
 
+#### 温馨配色方案（抑郁症患者专用）
 ```javascript
-// components/LargeButton.js
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+// constants/colors.js
+export const Colors = {
+    // 主色调 - 温暖的绿色系，给人安心感
+    primary: '#7C9885',        // 主绿色 - 温暖、安心
+    secondary: '#9BB8A3',      // 浅绿色 - 温和、舒缓
+    accent: '#B8D4C8',         // 薄荷绿 - 清新、希望
+    
+    // 背景色 - 柔和的中性色，减少视觉刺激
+    background: '#F8F6F3',     // 温暖的米白色背景
+    cardBackground: '#FFFFFF',   // 纯白卡片背景
+    
+    // 文字颜色 - 高对比度，易于阅读
+    textPrimary: '#4A4A4A',    // 深灰色主文本，比纯黑更柔和
+    textSecondary: '#7A7A7A',  // 中等灰色副文本
+    
+    // 分割线 - 极浅的灰色
+    divider: '#E8E5E2',
+    
+    // 状态颜色 - 温和的状态提示
+    success: '#7C9885',        // 成功绿色
+    successLight: '#F0F5F2',   // 成功背景浅色
+    warning: '#E8A598',        // 温暖橙色 - 不刺眼
+    warningLight: '#FDF5F4',   // 警告背景浅色
+    error: '#D4A5A5',          // 柔和红色 - 不过于强烈
+    
+    // 阴影 - 轻柔阴影增加层次感
+    shadow: '#000000'
+};
+```
 
-const LargeButton = ({ title, onPress, color = '#4CAF50', disabled = false }) => {
+#### 滑动确认组件（防误触）
+```javascript
+// components/SlideToConfirm.js
+import React, { useState } from 'react';
+import { View, Text, PanResponder, Animated, StyleSheet } from 'react-native';
+import { Colors } from '../constants/colors';
+
+const SlideToConfirm = ({ onConfirm, title = "滑动确认服药" }) => {
+    const [pan] = useState(new Animated.Value(0));
+    const [confirmed, setConfirmed] = useState(false);
+
+    const panResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onPanResponderMove: (e, gestureState) => {
+            if (gestureState.dx > 0 && gestureState.dx < 250) {
+                Animated.event([null, { dx: pan }], { useNativeDriver: false })(e, gestureState);
+            }
+        },
+        onPanResponderRelease: (e, gestureState) => {
+            if (gestureState.dx > 200) {
+                // 滑动成功
+                Animated.timing(pan, {
+                    toValue: 220,
+                    duration: 200,
+                    useNativeDriver: false
+                }).start(() => {
+                    setConfirmed(true);
+                    onConfirm();
+                });
+            } else {
+                // 回弹
+                Animated.spring(pan, {
+                    toValue: 0,
+                    useNativeDriver: false
+                }).start();
+            }
+        }
+    });
+
     return (
-        <TouchableOpacity 
-            style={[
-                styles.button, 
-                { backgroundColor: disabled ? '#CCCCCC' : color },
-                styles.shadow
-            ]}
-            onPress={onPress}
-            disabled={disabled}
-            activeOpacity={0.8}
-        >
-            <Text style={styles.buttonText}>{title}</Text>
-        </TouchableOpacity>
+        <View style={styles.container}>
+            <View style={styles.sliderTrack}>
+                <Animated.View 
+                    style={[
+                        styles.sliderThumb,
+                        { transform: [{ translateX: pan }] }
+                    ]}
+                    {...panResponder.panHandlers}
+                >
+                    <Text style={styles.thumbText}>💊</Text>
+                </Animated.View>
+                <Text style={styles.instructionText}>{title}</Text>
+            </View>
+            {confirmed && (
+                <Text style={styles.successText}>✅ 已确认服药！</Text>
+            )}
+        </View>
     );
 };
+```
 
 const styles = StyleSheet.create({
-    button: {
-        paddingVertical: 25,
-        paddingHorizontal: 40,
-        borderRadius: 20,
-        marginVertical: 15,
-        minWidth: 200,
+    container: {
+        marginVertical: 10,
         alignItems: 'center',
-        justifyContent: 'center'
     },
-    buttonText: {
-        fontSize: 24,
-        color: 'white',
+    sliderTrack: {
+        width: '100%',
+        height: 60,
+        backgroundColor: Colors.cardBackground,
+        borderRadius: 30,
+        borderWidth: 2,
+        borderColor: Colors.primary,
+        justifyContent: 'center',
+        position: 'relative',
+        shadowColor: Colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    sliderText: {
+        color: Colors.textPrimary,
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    sliderThumb: {
+        position: 'absolute',
+        left: 4,
+        width: 52,
+        height: 52,
+        backgroundColor: Colors.primary,
+        borderRadius: 26,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: Colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    thumbInner: {
+        width: 40,
+        height: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    thumbIcon: {
+        color: '#FFFFFF',
+        fontSize: 20,
         fontWeight: 'bold',
-        textAlign: 'center'
     },
-    shadow: {
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 4.65,
-        elevation: 8
+    successText: {
+        color: Colors.success,
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginTop: 8,
     }
 });
 
-export default LargeButton;
+export default SlideToConfirm;
 ```
 
-### 4.3 主屏幕组件
+### 4.3 今日服药界面（滑动确认版 - 温馨配色）
 
 ```javascript
 // screens/HomeScreen.js
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import LargeButton from '../components/LargeButton';
+import SlideToConfirm from '../components/SlideToConfirm';
 import { completeMedication } from '../store/slices/recordSlice';
+import Colors from '../constants/colors';
 
 const HomeScreen = () => {
     const dispatch = useDispatch();
     const [todaySchedules, setTodaySchedules] = useState([]);
+    const [fadeAnim] = useState(new Animated.Value(0));
     const { medications } = useSelector(state => state.medication);
     const { schedules } = useSelector(state => state.schedule);
     const { records } = useSelector(state => state.record);
 
+    const encouragements = [
+        "做得很好！每一步都是进步 🌱",
+        "你真棒！坚持就是胜利 💪",
+        "温柔地对待自己，你正在变好 🌸",
+        "今天的你比昨天更勇敢 ✨",
+        "小小的坚持，大大的改变 🦋"
+    ];
+
     useEffect(() => {
         loadTodaySchedules();
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true
+        }).start();
     }, [schedules, records]);
 
     const loadTodaySchedules = async () => {
         const today = new Date().toISOString().split('T')[0];
-        const todayDay = new Date().getDay(); // 0=周日
+        const todayDay = new Date().getDay();
         
-        // 筛选今天的服药计划
         const activeSchedules = schedules.filter(schedule => {
             const daysOfWeek = schedule.days_of_week.split(',').map(Number);
             return daysOfWeek.includes(todayDay === 0 ? 7 : todayDay);
         });
 
-        // 检查每个计划的完成状态
         const schedulesWithStatus = activeSchedules.map(schedule => {
             const record = records.find(r => 
                 r.schedule_id === schedule.id && r.scheduled_date === today
@@ -359,150 +485,200 @@ const HomeScreen = () => {
         return Math.round((completed / todaySchedules.length) * 100);
     };
 
+    const formatDosage = (medication) => {
+        if (!medication) return '';
+        const amount = medication.dosage_amount || 1;
+        const type = medication.dosage_type || '片';
+        
+        if (amount === 0.5) return '半片';
+        if (amount === 1) return '一片';
+        if (amount === 1.5) return '一片半';
+        return `${amount}${type}`;
+    };
+
+    const getRandomEncouragement = () => {
+        return encouragements[Math.floor(Math.random() * encouragements.length)];
+    };
+
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>今日服药</Text>
-                <Text style={styles.subtitle}>
-                    完成率: {getCompletionRate()}%
-                </Text>
-            </View>
+        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+            <ScrollView>
+                <View style={styles.header}>
+                    <Text style={styles.title}>今日服药</Text>
+                    <Text style={styles.subtitle}>
+                        完成率: {getCompletionRate()}%
+                    </Text>
+                </View>
 
-            <View style={styles.progressContainer}>
-                <View style={[styles.progressBar, { width: `${getCompletionRate()}%` }]} />
-            </View>
+                <View style={styles.progressContainer}>
+                    <View style={[styles.progressBar, { width: `${getCompletionRate()}%` }]} />
+                </View>
 
-            {todaySchedules.map((schedule) => (
-                <View key={schedule.id} style={styles.medicationCard}>
-                    <View style={styles.medicationInfo}>
-                        <Text style={styles.medicationName}>
-                            {schedule.medication?.name}
-                        </Text>
-                        <Text style={styles.medicationDosage}>
-                            {schedule.medication?.dosage}
-                        </Text>
+                {todaySchedules.map((schedule) => (
+                    <View key={schedule.id} style={styles.medicationCard}>
+                        <View style={styles.cardHeader}>
+                            <Text style={styles.cardTitle}>
+                                {schedule.medication?.name}
+                            </Text>
+                            <View style={styles.dosageBadge}>
+                                <Text style={styles.dosageText}>
+                                    {formatDosage(schedule.medication)}
+                                </Text>
+                            </View>
+                        </View>
+                        
                         <Text style={styles.scheduleTime}>
-                            计划时间: {schedule.time}
+                            🕐 {schedule.time}
+                        </Text>
+
+                        {schedule.status === 'pending' && (
+                            <View style={styles.actionContainer}>
+                                <SlideToConfirm 
+                                    onConfirm={() => handleMedicationComplete(schedule)}
+                                    title="滑动确认已服药"
+                                />
+                            </View>
+                        )}
+
+                        {schedule.status === 'taken' && (
+                            <View style={styles.statusContainer}>
+                                <Text style={styles.statusIcon}>✅</Text>
+                                <Text style={styles.completedText}>
+                                    {getRandomEncouragement()}
+                                </Text>
+                            </View>
+                        )}
+
+                        {schedule.status === 'missed' && (
+                            <View style={styles.statusContainer}>
+                                <Text style={styles.missedIcon}>🌙</Text>
+                                <Text style={styles.gentleText}>
+                                    错过了也没关系，明天记得按时服药哦 🌸
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                ))}
+
+                {todaySchedules.length === 0 && (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyIcon}>🌈</Text>
+                        <Text style={styles.emptyText}>
+                            今天没有服药安排
+                        </Text>
+                        <Text style={styles.emptySubtext}>
+                            去温柔地添加新的服药计划吧
                         </Text>
                     </View>
-
-                    {schedule.status === 'pending' && (
-                        <LargeButton
-                            title="确认服药"
-                            onPress={() => handleMedicationComplete(schedule)}
-                            color="#4CAF50"
-                        />
-                    )}
-
-                    {schedule.status === 'taken' && (
-                        <View style={styles.completedContainer}>
-                            <Text style={styles.completedText}>
-                                ✓ 已完成
-                            </Text>
-                            <Text style={styles.encouragementText}>
-                                太棒了！继续加油 💚
-                            </Text>
-                        </View>
-                    )}
-
-                    {schedule.status === 'missed' && (
-                        <View style={styles.missedContainer}>
-                            <Text style={styles.missedText}>
-                                已错过
-                            </Text>
-                            <Text style={styles.gentleText}>
-                                没关系，下次记得就好 🌈
-                            </Text>
-                        </View>
-                    )}
-                </View>
-            ))}
-
-            {todaySchedules.length === 0 && (
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>
-                        今天没有安排服药
-                    </Text>
-                    <Text style={styles.emptySubtext}>
-                        去设置页面添加服药计划吧
-                    </Text>
-                </View>
-            )}
-        </ScrollView>
+                )}
+            </ScrollView>
+        </Animated.View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F5'
+        backgroundColor: Colors.background
     },
     header: {
         padding: 30,
-        backgroundColor: '#2196F3',
-        alignItems: 'center'
+        backgroundColor: Colors.primary,
+        alignItems: 'center',
+        borderBottomLeftRadius: 25,
+        borderBottomRightRadius: 25,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5
     },
     title: {
-        fontSize: 32,
-        color: 'white',
+        fontSize: 28,
+        color: Colors.textOnPrimary,
         fontWeight: 'bold',
-        marginBottom: 10
+        marginBottom: 8
     },
     subtitle: {
-        fontSize: 18,
-        color: 'white',
+        fontSize: 16,
+        color: Colors.textOnPrimary,
         opacity: 0.9
     },
     progressContainer: {
-        height: 8,
-        backgroundColor: '#E0E0E0',
-        marginBottom: 20
+        height: 6,
+        backgroundColor: Colors.surface,
+        marginHorizontal: 20,
+        marginVertical: 15,
+        borderRadius: 3,
+        overflow: 'hidden'
     },
     progressBar: {
         height: '100%',
-        backgroundColor: '#4CAF50'
+        backgroundColor: Colors.success
     },
     medicationCard: {
-        backgroundColor: 'white',
-        margin: 15,
+        backgroundColor: Colors.cardBackground,
+        marginHorizontal: 20,
+        marginVertical: 10,
         padding: 25,
-        borderRadius: 15,
-        shadowColor: '#000',
+        borderRadius: 20,
+        shadowColor: Colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 8,
         elevation: 3
     },
-    medicationInfo: {
-        marginBottom: 20,
-        alignItems: 'center'
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15
     },
-    medicationName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 5
+    cardTitle: {
+        fontSize: 22,
+        fontWeight: '600',
+        color: Colors.textPrimary,
+        flex: 1
     },
-    medicationDosage: {
-        fontSize: 18,
-        color: '#666',
-        marginBottom: 10
+    dosageBadge: {
+        backgroundColor: Colors.primaryLight,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 15
+    },
+    dosageText: {
+        fontSize: 16,
+        color: Colors.primary,
+        fontWeight: '600'
     },
     scheduleTime: {
         fontSize: 16,
-        color: '#888'
+        color: Colors.textSecondary,
+        marginBottom: 20
     },
-    completedContainer: {
+    actionContainer: {
+        marginTop: 10
+    },
+    statusContainer: {
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#E8F5E8',
-        borderRadius: 15
+        backgroundColor: Colors.successLight,
+        borderRadius: 15,
+        marginTop: 10
+    },
+    statusIcon: {
+        fontSize: 28,
+        marginBottom: 8
     },
     completedText: {
-        fontSize: 24,
-        color: '#4CAF50',
-        fontWeight: 'bold',
-        marginBottom: 10
+        fontSize: 16,
+        color: Colors.success,
+        textAlign: 'center',
+        lineHeight: 22
+    },
+    missedIcon: {
+        fontSize: 28,
+        marginBottom: 8
     },
     encouragementText: {
         fontSize: 18,
@@ -526,20 +702,215 @@ const styles = StyleSheet.create({
     },
     emptyContainer: {
         alignItems: 'center',
-        padding: 50
+        padding: 50,
+        backgroundColor: Colors.background
+    },
+    emptyIcon: {
+        fontSize: 60,
+        marginBottom: 20,
+        opacity: 0.7
     },
     emptyText: {
         fontSize: 20,
-        color: '#666',
-        marginBottom: 10
+        color: Colors.textSecondary,
+        marginBottom: 10,
+        fontWeight: '600'
     },
     emptySubtext: {
         fontSize: 16,
-        color: '#999'
+        color: Colors.textSecondary,
+        opacity: 0.8,
+        textAlign: 'center',
+        lineHeight: 22
     }
 });
 
 export default HomeScreen;
+```
+
+### 4.5 药物添加界面（片剂计量版 - 温馨配色）
+
+```javascript
+// screens/AddMedicationScreen.js
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Colors } from '../constants/colors';
+import { MedicationDao } from '../database/medicationDao';
+
+const AddMedicationScreen = ({ navigation }) => {
+    const [name, setName] = useState('');
+    const [dosageAmount, setDosageAmount] = useState(1); // 默认为1片
+    const [description, setDescription] = useState('');
+
+    const dosageOptions = [
+        { label: '半片', value: 0.5 },
+        { label: '一片', value: 1 },
+        { label: '一片半', value: 1.5 },
+        { label: '两片', value: 2 },
+    ];
+
+    const handleAddMedication = async () => {
+        if (!name.trim()) {
+            alert('请填写药物名称');
+            return;
+        }
+
+        const medication = {
+            name: name.trim(),
+            dosage_type: '片',
+            dosage_amount: dosageAmount,
+            description: description.trim()
+        };
+
+        try {
+            await MedicationDao.create(medication);
+            navigation.goBack();
+        } catch (error) {
+            alert('添加药物失败，请重试');
+        }
+    };
+
+    return (
+        <ScrollView style={styles.container}>
+            <View style={styles.form}>
+                <Text style={styles.sectionTitle}>添加新的药物</Text>
+                
+                <Text style={styles.label}>药物名称</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="例如：百忧解"
+                    value={name}
+                    onChangeText={setName}
+                    placeholderTextColor={Colors.textSecondary}
+                />
+
+                <Text style={styles.label}>服用剂量</Text>
+                <View style={styles.dosageContainer}>
+                    {dosageOptions.map((option) => (
+                        <TouchableOpacity
+                            key={option.value}
+                            style={[
+                                styles.dosageButton,
+                                dosageAmount === option.value && styles.dosageButtonActive
+                            ]}
+                            onPress={() => setDosageAmount(option.value)}
+                        >
+                            <Text style={[
+                                styles.dosageButtonText,
+                                dosageAmount === option.value && styles.dosageButtonTextActive
+                            ]}>
+                                {option.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                <Text style={styles.label}>温馨备注（可选）</Text>
+                <TextInput
+                    style={[styles.input, styles.notesInput]}
+                    placeholder="添加贴心提醒..."
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    placeholderTextColor={Colors.textSecondary}
+                />
+
+                <TouchableOpacity style={styles.addButton} onPress={handleAddMedication}>
+                    <Text style={styles.addButtonText}>温柔地添加</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: Colors.background
+    },
+    header: {
+        backgroundColor: Colors.primary,
+        padding: 30,
+        alignItems: 'center'
+    },
+    headerText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFFFFF'
+    },
+    formContainer: {
+        padding: 20
+    },
+    label: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: Colors.textPrimary,
+        marginBottom: 8,
+        marginTop: 15
+    },
+    input: {
+        backgroundColor: Colors.cardBackground,
+        borderRadius: 15,
+        padding: 15,
+        fontSize: 16,
+        color: Colors.textPrimary,
+        borderWidth: 1,
+        borderColor: Colors.divider
+    },
+    textArea: {
+        height: 100,
+        textAlignVertical: 'top'
+    },
+    dosageContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10
+    },
+    dosageButton: {
+        backgroundColor: Colors.cardBackground,
+        borderWidth: 2,
+        borderColor: Colors.divider,
+        borderRadius: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        marginRight: 10,
+        marginBottom: 10
+    },
+    selectedDosageButton: {
+        backgroundColor: Colors.accent,
+        borderColor: Colors.primary
+    },
+    dosageText: {
+        fontSize: 16,
+        color: Colors.textPrimary
+    },
+    selectedDosageText: {
+        color: Colors.primary,
+        fontWeight: 'bold'
+    },
+    addButton: {
+        backgroundColor: Colors.primary,
+        borderRadius: 25,
+        padding: 18,
+        alignItems: 'center',
+        marginTop: 30,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3
+    },
+    disabledButton: {
+        backgroundColor: Colors.divider
+    },
+    addButtonText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold'
+    }
+});
+
+export default AddMedicationScreen;
 ```
 
 ## 5. 开发环境配置
