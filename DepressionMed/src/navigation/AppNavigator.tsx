@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,8 @@ import MedicineListScreen from '../screens/medicine/MedicineListScreen';
 import AddMedicineScreen from '../screens/medicine/AddMedicineScreen';
 import ReminderScreen from '../screens/reminder/ReminderScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
+import ChatScreen from '../screens/chat/ChatScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -30,14 +32,6 @@ function MedicineStack() {
   );
 }
 
-<<<<<<< HEAD
-// 导入实际的屏幕组件
-import ReminderScreen from '../screens/reminder/ReminderScreen';
-import HistoryScreen from '../screens/history/HistoryScreen';
-
-// 导入聊天屏幕
-import ChatScreen from '../screens/chat/ChatScreen';
-
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -45,6 +39,11 @@ export default function AppNavigator() {
         screenOptions={{
           tabBarActiveTintColor: '#007AFF',
           tabBarInactiveTintColor: 'gray',
+          tabBarStyle: {
+            paddingBottom: 5,
+            paddingTop: 5,
+            height: 60,
+          },
         }}
       >
         <Tab.Screen 
@@ -70,6 +69,14 @@ export default function AppNavigator() {
           options={{
             title: '记录',
             tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📊</Text>,
+          }}
+        />
+        <Tab.Screen 
+          name="Chat" 
+          component={ChatScreen} 
+          options={{
+            title: 'AI助手',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>💬</Text>,
           }}
         />
         <Tab.Screen 

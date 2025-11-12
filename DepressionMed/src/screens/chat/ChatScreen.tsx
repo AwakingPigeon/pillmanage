@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -34,11 +34,12 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const aiService = AIService.getInstance();
 
   const sendMessage = useCallback(async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isLoading) return;
 
     if (!aiService.isConfigured()) {
       setShowApiKeyInput(true);
@@ -56,8 +57,14 @@ export default function ChatScreen() {
     setInputText('');
     setIsLoading(true);
 
+    // 取消之前的请求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
-      const response = await aiService.chat(inputText);
+      const response = await aiService.chat(inputText, abortControllerRef.current.signal);
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -68,11 +75,25 @@ export default function ChatScreen() {
 
       setMessages(prev => [...prev, aiMessage]);
     } catch (error: any) {
-      Alert.alert('错误', error.message);
+      if (error.name === 'AbortError') {
+        console.log('Request was cancelled');
+        return;
+      }
+      
+      let errorMessage = '抱歉，获取信息时出现了错误。';
+      if (error.message?.includes('network')) {
+        errorMessage = '网络连接异常，请检查网络后重试。';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = '请求超时，请稍后再试。';
+      } else if (!aiService.isConfigured()) {
+        errorMessage = 'API未配置，请先设置API密钥。';
+      }
+      
+      Alert.alert('错误', errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [inputText, aiService]);
+  }, [inputText, aiService, isLoading]);
 
   const handleApiKeySubmit = () => {
     if (!apiKey.trim()) {
