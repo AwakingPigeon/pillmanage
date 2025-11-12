@@ -31,14 +31,8 @@ function MedicineStack() {
 import ReminderScreen from '../screens/reminder/ReminderScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 
-// 临时设置屏幕
-function SettingsScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>设置</Text>
-    </View>
-  );
-}
+// 导入聊天屏幕
+import ChatScreen from '../screens/chat/ChatScreen';
 
 export default function AppNavigator() {
   return (
