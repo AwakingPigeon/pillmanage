@@ -1,9 +1,12 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MedicineListScreen from '../screens/medicine/MedicineListScreen';
 import AddMedicineScreen from '../screens/medicine/AddMedicineScreen';
+import ReminderScreen from '../screens/reminder/ReminderScreen';
+import HistoryScreen from '../screens/history/HistoryScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -26,10 +29,6 @@ function MedicineStack() {
     </Stack.Navigator>
   );
 }
-
-// 导入实际的屏幕组件
-import ReminderScreen from '../screens/reminder/ReminderScreen';
-import HistoryScreen from '../screens/history/HistoryScreen';
 
 // 临时设置屏幕
 function SettingsScreen() {
@@ -86,5 +85,3 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
-
-import { View, Text } from 'react-native';
