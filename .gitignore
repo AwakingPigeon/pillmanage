@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+DepressionMed/node_modules/
+DepressionMed/.expo/
+*.log
+*.tmp
+dist/
+build/
+*.DS_Store
+Thumbs.db
