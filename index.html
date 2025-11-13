@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抑郁症患者服药提醒</title>
+    <style>
+        :root {
+            --primary-color: #FFB800;
+            --background-color: #FFF8E1;
+            --text-color: #5D4037;
+            --border-color: #FFE082;
+            --shadow-color: rgba(255, 183, 0, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #FFF8E1 0%, #FFE082 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FFB800 0%, #FFA726 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .section {
+            padding: 30px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            background: #FFFEF7;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .time-inputs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .time-inputs input {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #FFB800 0%, #FFA726 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #9E9E9E 0%, #757575 100%);
+            font-size: 14px;
+            padding: 10px;
+        }
+
+        .medication-card {
+            background: #FFFEF7;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .medication-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .medication-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .time-slot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .time-display {
+            font-size: 16px;
+            color: #FF8F00;
+            font-weight: bold;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 120px;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            transition: background 0.3s;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            font-size: 14px;
+            color: var(--text-color);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .taken-indicator {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .taken-indicator.taken {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .taken-indicator.pending {
+            background: #FF9800;
+            color: white;
+        }
+
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            background: #FFFEF7;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .record-date {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .record-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .record-status.taken {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .record-status.missed {
+            background: #f44336;
+            color: white;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .nav {
+            display: flex;
+            background: white;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .nav-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .nav-btn:hover {
+            background: #FFF8E1;
+        }
+
+        .add-time-btn {
+            background: #E0E0E0;
+            color: #666;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .remove-time-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .medication-list {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💊 服药提醒</h1>
+        </div>
+
+        <!-- 设置页面 -->
+        <div id="setup-section" class="section">
+            <h2>药物设置</h2>
+            <div id="medications-container">
+                <!-- 药物设置将动态生成 -->
+            </div>
+            <button class="btn" onclick="addMedication()">+ 添加药物</button>
+            <button class="btn" onclick="saveSettings()">保存设置</button>
+        </div>
+
+        <!-- 主页面 -->
+        <div id="main-section" class="section hidden">
+            <h2>今日服药</h2>
+            <div id="today-medications">
+                <!-- 今日药物将动态显示 -->
+            </div>
+            <button class="btn" onclick="showRecords()">查看记录</button>
+            <button class="btn btn-secondary" onclick="showSettings()">重新设置</button>
+        </div>
+
+        <!-- 记录页面 -->
+        <div id="records-section" class="section hidden">
+            <h2>服药记录</h2>
+            <div id="records-list">
+                <!-- 记录将动态显示 -->
+            </div>
+            <button class="btn" onclick="showMain()">返回</button>
+        </div>
+
+        <!-- 导航 -->
+        <div class="nav">
+            <button class="nav-btn" onclick="showSettings()">设置</button>
+            <button class="nav-btn active" onclick="showMain()">主页</button>
+            <button class="nav-btn" onclick="showRecords()">记录</button>
+        </div>
+    </div>
+
+    <script>
+        let medications = [];
+        let records = {};
+
+        const PRESET_MEDICINES = {
+            "抗抑郁药": ["丙米嗪","阿米替林","氯米帕明","马普替林","氟西汀","舍曲林","帕罗西汀","氟伏沙明","西酞普兰","艾司西酞普兰","文拉法辛","度洛西汀","米氮平","曲唑酮","安非他酮"],
+            "抗精神病药": ["氯丙嗪","奋乃静","氟哌啶醇","舒必利","氯氮平","利培酮","奥氮平","喹硫平","阿立哌唑","齐拉西酮","氨磺必利"],
+            "心境稳定剂": ["碳酸锂","丙戊酸盐","卡马西平","拉莫三嗪","奥氮平","喹硫平","利培酮","阿立哌唑"],
+            "抗焦虑药": ["地西泮","阿普唑仑","氯硝西泮","劳拉西泮","艾司唑仑","丁螺环酮","坦度螺酮"],
+            "镇静催眠药": ["地西泮","阿普唑仑","艾司唑仑","劳拉西泮","三唑仑","咪达唑仑","唑吡坦","佐匹克隆","右佐匹克隆"],
+            "精神振奋/ADHD": ["哌甲酯","莫达非尼"],
+            "改善认知障碍": ["多奈哌齐","加兰他敏","卡巴拉汀","美金刚","尼麦角林","胞磷胆碱"]
+        }
+
+        // 初始化应用
+        function initApp() {
+            loadData();
+            if (medications.length > 0) {
+                showMain();
+            } else {
+                showSettings();
+            }
+        }
+
+        // 加载数据
+        function loadData() {
+            const savedMeds = localStorage.getItem('medications');
+            const savedRecords = localStorage.getItem('medication_records');
+            
+            if (savedMeds) {
+                medications = JSON.parse(savedMeds);
+            }
+            
+            if (savedRecords) {
+                records = JSON.parse(savedRecords);
+            }
+        }
+
+        // 保存数据
+        function saveData() {
+            localStorage.setItem('medications', JSON.stringify(medications));
+            localStorage.setItem('medication_records', JSON.stringify(records));
+        }
+
+        // 显示设置页面
+        function showSettings() {
+            document.getElementById('setup-section').classList.remove('hidden');
+            document.getElementById('main-section').classList.add('hidden');
+            document.getElementById('records-section').classList.add('hidden');
+            renderMedicationsSetup();
+        }
+
+        // 显示主页面
+        function showMain() {
+            document.getElementById('setup-section').classList.add('hidden');
+            document.getElementById('main-section').classList.remove('hidden');
+            document.getElementById('records-section').classList.add('hidden');
+            renderTodayMedications();
+        }
+
+        // 显示记录页面
+        function showRecords() {
+            document.getElementById('setup-section').classList.add('hidden');
+            document.getElementById('main-section').classList.add('hidden');
+            document.getElementById('records-section').classList.remove('hidden');
+            renderRecords();
+        }
+
+        // 添加药物
+        function addMedication() {
+            const medId = Date.now();
+            medications.push({
+                id: medId,
+                category: '',
+                name: '',
+                useCustom: false,
+                customName: '',
+                times: ['09:00']
+            });
+            renderMedicationsSetup();
+        }
+
+        // 删除药物
+        function removeMedication(medId) {
+            medications = medications.filter(med => med.id !== medId);
+            renderMedicationsSetup();
+        }
+
+        // 添加时间
+        function addTime(medId) {
+            const medication = medications.find(med => med.id === medId);
+            if (medication && medication.times.length < 5) {
+                medication.times.push('12:00');
+                renderMedicationsSetup();
+            }
+        }
+
+        // 删除时间
+        function removeTime(medId, timeIndex) {
+            const medication = medications.find(med => med.id === medId);
+            if (medication && medication.times.length > 1) {
+                medication.times.splice(timeIndex, 1);
+                renderMedicationsSetup();
+            }
+        }
+
+        // 渲染药物设置
+        function renderMedicationsSetup() {
+            const container = document.getElementById('medications-container');
+            container.innerHTML = '';
+
+            medications.forEach((med, index) => {
+                const medDiv = document.createElement('div');
+                medDiv.className = 'medication-card';
+                const categories = Object.keys(PRESET_MEDICINES)
+                const drugOptions = med.category && PRESET_MEDICINES[med.category] ? PRESET_MEDICINES[med.category] : []
+                medDiv.innerHTML = `
+                    <div class="medication-header">
+                        <span>药物 ${index + 1}</span>
+                        <button class="remove-time-btn" onclick="removeMedication(${med.id})">删除</button>
+                    </div>
+                    <div class="input-group">
+                        <label>药物分类：</label>
+                        <select onchange="updateMedicationCategory(${med.id}, this.value)">
+                            <option value="">请选择分类</option>
+                            ${categories.map(c => `<option value="${c}" ${med.category===c?'selected':''}>${c}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>药物名称：</label>
+                        <select onchange="updateMedicationNameSelect(${med.id}, this.value)">
+                            <option value="">请选择药物</option>
+                            ${drugOptions.map(n => `<option value="${n}" ${(!med.useCustom && med.name===n)?'selected':''}>${n}</option>`).join('')}
+                            <option value="__other__" ${med.useCustom?'selected':''}>其他</option>
+                        </select>
+                        ${med.useCustom ? `
+                          <input type="text" value="${med.customName||''}" 
+                                 onchange="updateMedicationCustomName(${med.id}, this.value)" 
+                                 placeholder="请输入药物名称" maxlength="20">
+                        ` : ''}
+                    </div>
+                    <div class="input-group">
+                        <label>提醒时间：</label>
+                        <div id="times-${med.id}">
+                            ${med.times.map((time, timeIndex) => `
+                                <div class="time-inputs">
+                                    <input type="time" value="${time}" 
+                                           onchange="updateMedicationTime(${med.id}, ${timeIndex}, this.value)">
+                                    ${med.times.length > 1 ? 
+                                        `<button class="remove-time-btn" onclick="removeTime(${med.id}, ${timeIndex})">-</button>` : 
+                                        ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${med.times.length < 5 ? 
+                            `<button class="add-time-btn" onclick="addTime(${med.id})">+ 添加时间</button>` : 
+                            ''}
+                    </div>
+                `;
+                container.appendChild(medDiv);
+            });
+
+            if (medications.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">暂无药物设置</p>';
+            }
+        }
+
+        // 更新药物名称
+        function updateMedicationCategory(medId, category) {
+            const medication = medications.find(med => med.id === medId);
+            if (medication) {
+                medication.category = category;
+                medication.useCustom = false;
+                medication.customName = '';
+                medication.name = '';
+                renderMedicationsSetup();
+            }
+        }
+
+        function updateMedicationNameSelect(medId, value) {
+            const medication = medications.find(med => med.id === medId);
+            if (medication) {
+                if (value === '__other__') {
+                    medication.useCustom = true;
+                    medication.name = '';
+                } else {
+                    medication.useCustom = false;
+                    medication.name = value;
+                }
+                renderMedicationsSetup();
+            }
+        }
+
+        function updateMedicationCustomName(medId, name) {
+            const medication = medications.find(med => med.id === medId);
+            if (medication) {
+                medication.customName = name;
+            }
+        }
+
+        // 更新药物时间
+        function updateMedicationTime(medId, timeIndex, time) {
+            const medication = medications.find(med => med.id === medId);
+            if (medication) {
+                medication.times[timeIndex] = time;
+            }
+        }
+
+        // 保存设置
+        function saveSettings() {
+            // 验证输入
+            for (let med of medications) {
+                const finalName = med.useCustom ? (med.customName||'').trim() : (med.name||'').trim()
+                if (!finalName) {
+                    alert('请填写所有药物名称');
+                    return;
+                }
+                if (med.times.some(time => !time)) {
+                    alert('请填写所有提醒时间');
+                    return;
+                }
+            }
+
+            saveData();
+            showMain();
+        }
+
+        // 渲染今日药物
+        function renderTodayMedications() {
+            const container = document.getElementById('today-medications');
+            container.innerHTML = '';
+
+            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+            if (medications.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">暂无药物设置</p>';
+                return;
+            }
+
+            medications.forEach(med => {
+                const medDiv = document.createElement('div');
+                medDiv.className = 'medication-card';
+                
+                let timeSlotsHtml = '';
+                med.times.forEach((time, timeIndex) => {
+                    const recordKey = `${today}_${med.id}_${timeIndex}`;
+                    const isTaken = records[recordKey];
+                    
+                    timeSlotsHtml += `
+                        <div class="time-slot">
+                            <div>
+                                <div class="medication-name">${med.useCustom ? (med.customName||'') : med.name}</div>
+                                <div class="time-display">${time}</div>
+                            </div>
+                            <div class="slider-container">
+                                ${!isTaken ? 
+                                    `<input type="range" class="slider" min="0" max="100" value="0" 
+                                            id="slider-${med.id}-${timeIndex}" 
+                                            oninput="updateSliderValue(${med.id}, ${timeIndex}, this.value)"
+                                            onchange="handleSliderConfirm(${med.id}, ${timeIndex}, this.value)">
+                                    <span class="slider-value" id="value-${med.id}-${timeIndex}">0%</span>` : 
+                                    '<span class="taken-indicator taken">已服用</span>'
+                                }
+                            </div>
+                        </div>
+                    `;
+                });
+
+                medDiv.innerHTML = `
+                    <div class="medication-header">
+                        <span class="medication-name">${med.useCustom ? (med.customName||'') : med.name}</span>
+                    </div>
+                    ${timeSlotsHtml}
+                `;
+                container.appendChild(medDiv);
+            });
+        }
+
+        // 更新滑块值
+        function updateSliderValue(medId, timeIndex, value) {
+            const valueDisplay = document.getElementById(`value-${medId}-${timeIndex}`);
+            if (valueDisplay) {
+                valueDisplay.textContent = value + '%';
+            }
+        }
+
+        // 处理滑动确认
+        function handleSliderConfirm(medId, timeIndex, value) {
+            if (parseInt(value) >= 80) {
+                const today = new Date().toISOString().split('T')[0];
+                const recordKey = `${today}_${medId}_${timeIndex}`;
+                
+                // 找到对应的药物
+                const medication = medications.find(med => med.id === medId);
+                if (medication) {
+                    const finalName = medication.useCustom ? (medication.customName||'') : medication.name
+                    records[recordKey] = {
+                        medicationName: finalName,
+                        time: medication.times[timeIndex],
+                        takenAt: new Date().toISOString()
+                    };
+                    
+                    saveData();
+                    renderTodayMedications();
+                    
+                    // 显示成功提示
+                    showNotification(`${medication.name} - ${medication.times[timeIndex]} 已确认服用！`);
+                }
+            } else {
+                // 重置滑块
+                const slider = document.getElementById(`slider-${medId}-${timeIndex}`);
+                if (slider) {
+                    slider.value = 0;
+                    updateSliderValue(medId, timeIndex, 0);
+                }
+            }
+        }
+
+        // 渲染记录
+        function renderRecords() {
+            const container = document.getElementById('records-list');
+            container.innerHTML = '';
+
+            const recordEntries = Object.entries(records);
+            if (recordEntries.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">暂无服药记录</p>';
+                return;
+            }
+
+            // 按日期排序
+            const sortedRecords = recordEntries.sort((a, b) => new Date(b[1].takenAt) - new Date(a[1].takenAt));
+
+            sortedRecords.forEach(([key, record]) => {
+                const [date, medId, timeIndex] = key.split('_');
+                const recordDiv = document.createElement('div');
+                recordDiv.className = 'record-item';
+                
+                const takenDate = new Date(record.takenAt);
+                const takenTime = takenDate.toLocaleTimeString('zh-CN', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                recordDiv.innerHTML = `
+                    <div>
+                        <div class="record-date">${formatDate(date)} ${record.medicationName}</div>
+                        <div style="font-size: 12px; color: #666;">
+                            计划时间: ${record.time} | 实际时间: ${takenTime}
+                        </div>
+                    </div>
+                    <span class="record-status taken">已服用</span>
+                `;
+                container.appendChild(recordDiv);
+            });
+        }
+
+        // 格式化日期
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const targetDate = new Date(dateStr);
+            targetDate.setHours(0, 0, 0, 0);
+            
+            if (targetDate.getTime() === today.getTime()) {
+                return '今天';
+            }
+            
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (targetDate.getTime() === yesterday.getTime()) {
+                return '昨天';
+            }
+            
+            return `${date.getMonth() + 1}月${date.getDate()}日`;
+        }
+
+        // 显示通知
+        function showNotification(message) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('服药提醒', {
+                    body: message,
+                    icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFB800"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'
+                });
+            } else {
+                // 使用alert作为备选
+                alert(message);
+            }
+        }
+
+        // 请求通知权限
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+            requestNotificationPermission();
+        });
+
+        // 每分钟检查一次是否需要提醒
+        setInterval(() => {
+            checkReminders();
+        }, 60000);
+
+        // 检查提醒
+        function checkReminders() {
+            const now = new Date();
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            const today = now.toISOString().split('T')[0];
+
+            medications.forEach(med => {
+                med.times.forEach((time, timeIndex) => {
+                    const recordKey = `${today}_${med.id}_${timeIndex}`;
+                    
+                    // 如果时间是当前时间或已过但未记录
+                    if (time === currentTime && !records[recordKey]) {
+                        showNotification(`${med.name} 服药时间到了！请滑动确认服用。`);
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -14,6 +14,16 @@ Notifications.setNotificationHandler({
 
 type TabKey = 'home' | 'records' | 'medicine' | 'settings'
 
+const PRESET_MEDICINES: Record<string, string[]> = {
+  抗抑郁药: ['丙米嗪','阿米替林','氯米帕明','马普替林','氟西汀','舍曲林','帕罗西汀','氟伏沙明','西酞普兰','艾司西酞普兰','文拉法辛','度洛西汀','米氮平','曲唑酮','安非他酮'],
+  抗精神病药: ['氯丙嗪','奋乃静','氟哌啶醇','舒必利','氯氮平','利培酮','奥氮平','喹硫平','阿立哌唑','齐拉西酮','氨磺必利'],
+  心境稳定剂: ['碳酸锂','丙戊酸盐','卡马西平','拉莫三嗪','奥氮平','喹硫平','利培酮','阿立哌唑'],
+  抗焦虑药: ['地西泮','阿普唑仑','氯硝西泮','劳拉西泮','艾司唑仑','丁螺环酮','坦度螺酮'],
+  镇静催眠药: ['地西泮','阿普唑仑','艾司唑仑','劳拉西泮','三唑仑','咪达唑仑','唑吡坦','佐匹克隆','右佐匹克隆'],
+  精神振奋ADHD: ['哌甲酯','莫达非尼'],
+  改善认知障碍: ['多奈哌齐','加兰他敏','卡巴拉汀','美金刚','尼麦角林','胞磷胆碱'],
+}
+
 export default function App() {
   const [tab, setTab] = useState<TabKey>('home')
   const [config, setConfig] = useState<MedicationConfig>({
@@ -26,6 +36,10 @@ export default function App() {
     reminderIntervalDays: 1,
   })
   const [records, setRecords] = useState<MedicationRecords>({})
+  const [category, setCategory] = useState<string>('')
+  const [presetDrug, setPresetDrug] = useState<string>('')
+  const [useCustomDrug, setUseCustomDrug] = useState<boolean>(false)
+  const [customDrugName, setCustomDrugName] = useState<string>('')
 
   useEffect(() => {
     ;(async () => {
@@ -37,6 +51,7 @@ export default function App() {
       if (savedConfig?.isActive) {
         await scheduleDailyOrIntervalNotification(savedConfig)
       }
+      if (savedConfig?.medicationCategory) setCategory(savedConfig.medicationCategory)
     })()
   }, [])
 
@@ -152,6 +167,47 @@ export default function App() {
       {tab === 'medicine' && (
         <View style={{ flex: 1, padding: 24 }}>
           <Text style={{ fontSize: 24, marginBottom: 16 }}>药物设置</Text>
+          <Text style={{ fontSize: 16, marginBottom: 8 }}>药物分类</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {Object.keys(PRESET_MEDICINES).map(c => (
+              <Pressable
+                key={c}
+                onPress={() => { setCategory(c); setPresetDrug(''); setUseCustomDrug(false); setCustomDrugName(''); setConfig({ ...config, medicationCategory: c }) }}
+                style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#ccc', backgroundColor: category===c ? '#F0F8FF' : '#FFFFFF' }}
+              >
+                <Text>{c}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {category ? (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 16, marginBottom: 8 }}>药物名称</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {PRESET_MEDICINES[category].map(n => (
+                  <Pressable
+                    key={n}
+                    onPress={() => { setPresetDrug(n); setUseCustomDrug(false); setConfig({ ...config, medicationName: n }) }}
+                    style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#ccc', backgroundColor: presetDrug===n ? '#F0F8FF' : '#FFFFFF' }}
+                  >
+                    <Text>{n}</Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  onPress={() => { setUseCustomDrug(true); setPresetDrug('') }}
+                  style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#ccc', backgroundColor: useCustomDrug ? '#F0F8FF' : '#FFFFFF' }}
+                >
+                  <Text>其他</Text>
+                </Pressable>
+              </View>
+              {useCustomDrug && (
+                <LabeledInput
+                  label="其他药物名"
+                  value={customDrugName}
+                  onChangeText={t => { setCustomDrugName(t); setConfig({ ...config, medicationName: t }) }}
+                />
+              )}
+            </View>
+          ) : null}
           <LabeledInput
             label="药物名称"
             value={config.medicationName}
@@ -263,4 +319,3 @@ function WeekRecords({ records }: { records: MedicationRecords }) {
     </View>
   )
 }
-

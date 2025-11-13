@@ -8,5 +8,5 @@ export interface MedicationConfig {
   inventoryCount: number
   daysBeforeRunout: number
   reminderIntervalDays: number
+  medicationCategory?: string
 }
-
