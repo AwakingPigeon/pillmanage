@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert } from 'react-native'
+import { View, Text, Pressable, TextInput, Alert, Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import { StorageService } from './DepressionMed/src/services/storage'
 import type { MedicationConfig, MedicationRecords } from './DepressionMed/src/types'
@@ -73,6 +73,14 @@ export default function App() {
         Alert.alert('通知权限被拒绝', '请在系统设置中允许通知以接收提醒')
       }
     }
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: '默认',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      })
+    }
   }
 
   async function scheduleDailyOrIntervalNotification(cfg: MedicationConfig) {
@@ -87,10 +95,11 @@ export default function App() {
       // 通过多条计划近似实现隔日：每日提醒，配合应用内逻辑只在需要的日子显示
       // 简化实现：仍按日程触发，用户在“隔日”当天确认。
     }
-    await Notifications.scheduleNotificationAsync({
+  await Notifications.scheduleNotificationAsync({
       content: {
         title: '服药提醒',
         body: `${cfg.medicationName} 请在 ${cfg.reminderTime} 服用`,
+        channelId: Platform.OS === 'android' ? 'default' : undefined,
       },
       trigger,
     })
